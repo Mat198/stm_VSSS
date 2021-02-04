@@ -1,0 +1,75 @@
+##### Placa & Microcontrolador #####
+
+Utilizando a placa de desenvolvimento popularmente conhecida como Blue Pill com o micrcontrolador STM32F103C8Tb
+
+-> AS CONFIGURAÇÕES SE ENCONTRAM NO ARQUIVO COM FINAL ".ioc" <-
+
+###### Configurações atuais #####
+
+## System ##
+
+DEBUG -> Serial Wire
+
+## Clock ##
+
+64MHz -> Máximo permitido para essa placa de desenvolvimento. É citado 72MHz mas não sei como ativar
+
+## UART ##
+
+UART 1:
+-> Mode = Asynchronous
+-> Hardware Flow Control (RS232) = Disable
+
+Parameter Settings:
+-> Baud Rate = 115200 Bits/s * Maior velocidade permitida pelo Xbee
+-> Word Length = 8 bits *Padrão ASCII
+-> Parity = None
+-> Stop Bits = 1
+-> Data Direction = Receive and Transmit
+-> Over Sampling = 16 Samples *Padrão
+
+Nota: As configurações DEVEM ser iguais as do Xbee para que a comunicação funcione adequadamente
+
+## Timers ##
+
+Timer 2:
+-> Clock Sounce = Internal Clock
+-> Channel 2 = PWM Generation CH2
+-> Deixar o resto desabilitado = Disable
+NVIC Settings -> Não precisa ligar essa interrupção (Caixinha desmarcada)
+
+Parameter Settings:
+-> Prescaler = 0
+-> Conter Mode = Up
+-> Counter Period = 1280-1 (O programa soma 1 ao Prescaler e ao Counter Period)
+-> Internal Clock Division = No Division
+-> auto-reload preload = Disable
+-> Master/Slave Mode = Disable
+-> Tigger Event Selection = Reset
+-> Mode = PWM mode 1
+-> Pulse = 0 
+-> Output compare prelaod = Disable
+-> Fast mode = disable
+-> CH Polarity = High
+
+Notas: 
+Essa configuração faz com que a frequência do PWM seja de 50kHz (Clock/Counter Period = 64MHz/1280) e a resolução seja de 1280. Desse modo, 1280 = 100% de duty cycle, motor ligado no máximo, e 0 = completamente desligado. 
+
+Mais resolução permite um ajuste mais fino da velocidade do motor o que pode vir a ser necessário. Para aumentar a resolução é preciso aumentar o Counter Period. Mais resolução significa uma frequência menor e se ela for muito baixa o motor fica dando trancos. 
+
+Pense que o PWM é como apagar e acender a luz, se vc faz isso rápido o suficiente a sensação é que o brilho é um valor intermediário entre o totalmente claro e escuro. Se vc faz isso mt devagar então o resultado é que as vezes estará claro e as vezes escuro.
+
+## GPIO ##
+PA3 (Led externo verde)-> Output. Label: Led_g
+PA4 (Led externo amarelo)-> Output. Label: Led_y
+PA5 (Led externo vermelho)-> Output. Label: Led_r
+PB4 (Sentido 1 do motor direito*) -> Output. Label: M1
+PB9 (Sentido 2 do motor direito*) -> Output. Label: M2
+PC13 (LED interno) -> Output. Label: Led_i
+
+* A ponte H precisa de dois pinos para setar o sentido do motor
+M1	M2	Giro
+High	Low	Horário
+Low	High	Anti-horário
+Low	Low	Parado
+High	High	Parado
