@@ -16,15 +16,6 @@
   *
   *	Coisas para resolver:
   *
-  * Pesquisar:
-  * 	PWM e mudança de valor do duty cycle para os canais separadamente
-  * 	O método de contagem do encoder e como lider com ele
-  * 	Se existem métodos melhores do encoder que o 1
-  *
-  * Teste geral dos recursos da placa
-  * Testar se o tempo alvo do loop de controle está correto
-  * 	Ponte H
-  * 	XBEE
   *
   * Implementar o controle do robo
   *
@@ -38,8 +29,8 @@
   * Comunicação UART por interrupção com módulo Xbee OK
   * Leitura e interpretação da mensagem recebida OK
   * Geração de PWM para motores OK
-  * Leitura dos Encoders (Montar circuito)
-  * Controle da velocidade dos motores com PWM gerado
+  * Leitura dos Encoders OK
+  * Controle da velocidade dos motores com PWM gerado X
   *
   * ****************************************************************************
   * Como utilizar:
@@ -53,7 +44,7 @@
   * ***************************************************************************
   * Partes do código
   * USER CODE Header: Comentários de introdução
-  * USER CODE Includes: Bibliotecas do usuário
+  * USER CODE Includes: Bibliotecas do usuário. Utilizando math.h
   * USER CODE PV: Declaração de variáveis
   * USER CODE 0: Vazio
   * USER CODE 1: Vazio
@@ -61,7 +52,7 @@
   * USER CODE 2: Vazio
   * USER CODE WHILE: Loop de programa
   * USER CODE 3: Vazio
-  * USER CODE 4: Funções de interrupção e timers
+  * USER CODE 4: Funções de interrupção, timers e comunicação
   *
   * Preencher aqui conforme o código for atualizado, por favor.
   ******************************************************************************
