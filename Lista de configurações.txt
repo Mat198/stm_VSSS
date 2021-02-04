@@ -16,7 +16,7 @@ DEBUG -> Serial Wire
 
 ## UART ##
 
-UART 1:
+UART 2:
 -> Mode = Asynchronous
 -> Hardware Flow Control (RS232) = Disable
 
@@ -106,3 +106,7 @@ High	Low	Horário
 Low	High	Anti-horário
 Low	Low	Parado
 High	High	Parado
+
+## NVIC ##
+
+Ativar interrupções globais do TIM2 e do USART2
