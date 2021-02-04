@@ -33,39 +33,72 @@ Nota: As configurações DEVEM ser iguais as do Xbee para que a comunicação fu
 ## Timers ##
 
 Timer 2:
--> Clock Sounce = Internal Clock
--> Channel 2 = PWM Generation CH2
--> Deixar o resto desabilitado = Disable
-NVIC Settings -> Não precisa ligar essa interrupção (Caixinha desmarcada)
+  -> Clock Sounce = Internal Clock
+  -> Channel 1 = PWM Generation CH1 
+  -> Channel 2 = PWM Generation CH2
+  -> Deixar o resto desabilitado = Disable
+  NVIC Settings -> Não precisa ligar essa interrupção (Caixinha desmarcada)
 
-Parameter Settings:
--> Prescaler = 0
--> Conter Mode = Up
--> Counter Period = 1280-1 (O programa soma 1 ao Prescaler e ao Counter Period)
--> Internal Clock Division = No Division
--> auto-reload preload = Disable
--> Master/Slave Mode = Disable
--> Tigger Event Selection = Reset
--> Mode = PWM mode 1
--> Pulse = 0 
--> Output compare prelaod = Disable
--> Fast mode = disable
--> CH Polarity = High
+  Parameter Settings:
+  -> Prescaler = 0
+  -> Conter Mode = Up
+  -> Counter Period = 3199 (O programa soma 1 ao Prescaler e ao Counter Period)
+  -> Internal Clock Division = No Division
+  -> auto-reload preload = Disable
+  -> Master/Slave Mode = Disable
+  -> Tigger Event Selection = Reset
 
-Notas: 
-Essa configuração faz com que a frequência do PWM seja de 50kHz (Clock/Counter Period = 64MHz/1280) e a resolução seja de 1280. Desse modo, 1280 = 100% de duty cycle, motor ligado no máximo, e 0 = completamente desligado. 
+  Chanel 1 e 2
+  -> Mode = PWM mode 1
+  -> Pulse = 0 
+  -> Output compare prelaod = Disable
+  -> Fast mode = disable
+  -> CH Polarity = High
 
-Mais resolução permite um ajuste mais fino da velocidade do motor o que pode vir a ser necessário. Para aumentar a resolução é preciso aumentar o Counter Period. Mais resolução significa uma frequência menor e se ela for muito baixa o motor fica dando trancos. 
+  Notas: 
+  Essa configuração faz com que a frequência do PWM seja de 20kHz (Clock/Counter Period = 64MHz/3200) e a resolução seja de 3200. Desse modo, 3200 = 100% de duty cycle, motor ligado no máximo, e 0 = completamente desligado. 
 
-Pense que o PWM é como apagar e acender a luz, se vc faz isso rápido o suficiente a sensação é que o brilho é um valor intermediário entre o totalmente claro e escuro. Se vc faz isso mt devagar então o resultado é que as vezes estará claro e as vezes escuro.
+  Mais resolução permite um ajuste mais fino da velocidade do motor o que pode vir a ser necessário. Para aumentar a resolução é preciso aumentar o Counter Period. Mais resolução significa uma frequência menor e se ela for muito baixa o motor fica dando trancos. 
+
+  Pense que o PWM é como apagar e acender a luz, se vc faz isso rápido o suficiente a sensação é que o brilho é um valor intermediário entre o totalmente claro e escuro. Se vc faz isso mt devagar então o resultado é que as vezes estará claro e as vezes escuro.
+
+Timers 3 e 4:
+  -> Clock Sounce = Disable
+  -> Combined channels = Encoder Mode
+  -> Deixar o resto desabilitado = Disable
+
+  Parameter Settings:
+  -> Prescaler = 0
+  -> Conter Mode = Up
+  -> Counter Period = 59999 (O programa soma 1 ao Prescaler e ao Counter Period)
+  -> Internal Clock Division = No Division
+  -> auto-reload preload = Disable
+  -> Master/Slave Mode = Disable
+  -> Tigger Event Selection = Reset
+
+  Encoder:
+  -> Encoder Mode = Encoder Mode TI1 and TI2
+  Parameters for channel 1:
+  -> Polarity = Rising Edge
+  -> IC Selecntion = Direct
+  -> Prescaler Division Ratio = No division 
+  -> Input filter = 0
+  Parameters for channel 2:
+  -> Polarity = Rising Edge
+  -> IC Selecntion = Direct
+  -> Prescaler Division Ratio = No division 
+  -> Input filter = 0
 
 ## GPIO ##
-PA3 (Led externo verde)-> Output. Label: Led_g
-PA4 (Led externo amarelo)-> Output. Label: Led_y
-PA5 (Led externo vermelho)-> Output. Label: Led_r
-PB4 (Sentido 1 do motor direito*) -> Output. Label: M1
-PB9 (Sentido 2 do motor direito*) -> Output. Label: M2
+
+PA0 (Led externo amarelo)-> Output. Label: Led_y
+PA1(Led externo vermelho)-> Output. Label: Led_r
+PB4 (Sentido A do motor 1) -> Output. Label: M1A
+PB9 (Sentido B do motor 1) -> Output. Label: M1B
+PB4 (Sentido A do motor 2) -> Output. Label: M2A
+PB9 (Sentido B do motor 2) -> Output. Label: M2B
 PC13 (LED interno) -> Output. Label: Led_i
+PC15 (Led externo verde)-> Output. Label: Led_g
 
 * A ponte H precisa de dois pinos para setar o sentido do motor
 M1	M2	Giro
