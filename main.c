@@ -14,23 +14,20 @@
   ******************************************************************************
   ******************************************************************************
   *
-  *	Coisas para resolver:
-  *
-  *
-  * Implementar o controle do robo
-  *
+  * Organizar código com comentários e com um mini interface no começo
   *
   *
   ******************************************************************************
   ******************************************************************************
-  * Código desenvolvido na CUBE IDE 1.3.0
+  * Código desenvolvido na CUBE IDE 1.7.0
   *
   * Lista de funções desempenhadas:
-  * Comunicação UART por interrupção com módulo Xbee OK
-  * Leitura e interpretação da mensagem recebida OK
-  * Geração de PWM para motores OK
-  * Leitura dos Encoders OK
-  * Controle da velocidade dos motores com PWM gerado X
+  * Comunicação UART por interrupção com módulo Xbee
+  * Leitura e interpretação da mensagem recebida
+  * Geração de PWM para motores
+  * Leitura dos Encoders
+  * Controle da velocidade dos motores com PWM gerado
+  * Modo de ajuste do controlador
   *
   * ****************************************************************************
   * Como utilizar:
@@ -41,18 +38,42 @@
   * Organize e comente as suas funções e códigos adequadamente para facilitar
   * para os membros futuros da equipe. Utilize o Git para atualizar o código.
   *
+  * Modo de Controle:
+  * 	Ativar a variável "medir_vel" = 1
+  *
+  * 	Para medir a velocidade sem controlador:
+  * 		Ativar a variável "desl_controlador" = 1
+  * 		Sertar PWM do teste na variável "PWM_test"
+  * 		O robô então vai se mover com a tensão nos motores correspondente ao PWM setado
+  * 		Depois de medir a velocidade por uma quantidade de pontos igual a "vetor_dados"
+  * 		O robô vai parar e enviar os dados pelo módulo de rádio.
+  *
+  * 	Para medir a velocidade com o controlador:
+  * 		Desativar a variável "desl_controlador" = 0
+  * 		Setar a velocidade alvo de cada controlador nas variáveis "w_targetM1" e "w_targetM12"
+  * 			Essa velocidade está em rad/s
+  * 		Depois de medir a velocidade por uma quantidade de pontos igual a "vetor_dados"
+  * 		O robô vai parar e enviar os dados pelo módulo de rádio.
+  *
+  * Modo de jogo:
+  * 	Desativar a variável "medir_vel" = 0
+  * 	O robô vai aguradar uma menságem para definir o setpoint do controlar
+  *
+  *		OBS: O tempo de loop do controlador e da medição dos dados foi definido em 10ms por
+  *			conta da resolução dos encoders.
+  *
   * ***************************************************************************
   * Partes do código
   * USER CODE Header: Comentários de introdução
-  * USER CODE Includes: Bibliotecas do usuário. Utilizando math.h
-  * USER CODE PV: Declaração de variáveis
-  * USER CODE 0: Vazio
-  * USER CODE 1: Vazio
-  * USER CODE SysInit: Inicialização do sistema
-  * USER CODE 2: Vazio
+  * USER CODE Includes: Bibliotecas do usuário
+  * USER CODE PV: Vazio
+  * USER CODE 0: Declaração de variáveis
+  * USER CODE 1: Variáveis da equação de controle e
+  * USER CODE SysInit: Vazio
+  * USER CODE 2: Inicialização do sistema
   * USER CODE WHILE: Loop de programa
   * USER CODE 3: Vazio
-  * USER CODE 4: Funções de interrupção, timers e comunicação
+  * USER CODE 4: Funções de interrupção e timers
   *
   * Preencher aqui conforme o código for atualizado, por favor.
   ******************************************************************************
@@ -109,30 +130,41 @@ static void MX_USART2_UART_Init(void);
 static int true = 1;
 static int false = 0;
 uint16_t delay = 500;
-//double velocidadesM1[150]= {};
-//double velocidadesM2[150]= {};
+
+//Variáveis do modo de controle
+int vetor_dados = 150;
+
+int medir_vel = 0;
+int desl_controlador = 0;
+int PWM_test = 3200;
+
+double w_targetM1 = 20;
+double w_targetM2 = 20;
+
 int cont_vel = 0;
+double velocidadesM1[150]= {};
+double velocidadesM2[150]= {};
 uint8_t buffer_vel[6] = {};
+int start_medir_vel = 0;
 
 //Variáveis de comunicação serial
 uint8_t size_msg = 10;
-uint8_t tx_buffer []={'L','i','g','a','d','o',' ',' ',' ','\n'}; // Msg inicial enviada pelo robô
+uint8_t tx_buffer[] = {'L','i','g','a','d','o',' ',' ',' ','\n'}; // Msg inicial enviada pelo robô
 uint8_t rx_buffer[10]; //Buffer que recebe as mensagens
+
 
 // Variáveis de controle dos motores
 uint16_t duty_cycle = 0;
 int speedM1 = 0;
 int speedM2 = 0;
-int pwmM1 = 0;
-int pwmM2 = 0;
+unsigned int pwmM1 = 0;
+unsigned int pwmM2 = 0;
 int sentidoM1 = 0;
 int sentidoM2 = 0;
-int Tloop = 0.01;
+int cont_loop = 200;
 
 double w_rodaM1[2] = {};
 double w_rodaM2[2] = {};
-double w_targetM1 = 20;
-double w_targetM2 = 20;
 
 double acaoM1[2] = {0,0};
 double acaoM2[2] = {0,0};
@@ -142,15 +174,17 @@ double erroM2[3] = {0,0,0};
 int pulse_cnt = 3200; // Contagem de pulsos do clock. É a resolução do PWM
 int cont_controle = 0;
 int npulsos = 12;
-int cppM1 = 0;
-int cppM2 = 0;
+int cppM1[2] ={0,0};
+int cppM2[2] = {0,0};
 int flag_controle = 0;
 
 // Valores do controlador
-double Kp = 1.5;
-double Kd = 0.1;
-double Ki = 0.5;
-double Kpwm = 2350*8.165/21.0;
+double K1 = 20*0.9;
+double Td1 = 2e-3;
+double Ti1 = 10e-3;
+double K2 = 20*0.9;
+double Td2 = 2e-3;
+double Ti2 = 10e-3;
 
 
 /* USER CODE END 0 */
@@ -162,6 +196,23 @@ double Kpwm = 2350*8.165/21.0;
 int main(void)
 {
   /* USER CODE BEGIN 1 */
+
+	if (medir_vel == false){
+		w_targetM1 = 0.0;
+		w_targetM2 = 0.0;
+	}
+
+	double Tloop = 2.0/(cont_loop);
+
+	// Variáveis do controlador
+	double M1A1 = 2.0*Tloop*K1 + K1*(Tloop*Tloop)/Ti1 + 2.0*K1*Td1;
+	double M1A2 = K1*(Tloop*Tloop)/Ti1 - 2.0*Tloop*K1 - 4.0*K1*Td1;
+	double M1A3 = 2.0*K1*Td1;
+
+	double M2A1 = 2.0*Tloop*K2 + K2*(Tloop*Tloop)/Ti2 + 2.0*K2*Td2;
+	double M2A2 = K2*(Tloop*Tloop)/Ti2 - 2.0*Tloop*K2 - 4.0*K2*Td2;
+	double M2A3 = 2.0*K2*Td2;
+
 
   /* USER CODE END 1 */
 
@@ -201,16 +252,17 @@ int main(void)
   HAL_GPIO_WritePin(M1A_GPIO_Port, M1A_Pin, RESET);
   HAL_GPIO_WritePin(M1B_GPIO_Port, M1B_Pin, RESET);
 
-  /*
-  HAL_Delay(1000);
+
+  HAL_Delay(2000); // Delay para zerar qualquer velocidade do robô
   HAL_GPIO_WritePin(M2A_GPIO_Port, M2A_Pin, SET);
   HAL_GPIO_WritePin(M2B_GPIO_Port, M2B_Pin, RESET);
   HAL_GPIO_WritePin(M1A_GPIO_Port, M1A_Pin, SET);
   HAL_GPIO_WritePin(M1B_GPIO_Port, M1B_Pin, RESET);
 
-  __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, 3200);
-  __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_2, 3200);
-  */
+  if(desl_controlador == true){
+	  __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, PWM_test);
+	  __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_2, PWM_test);
+  }
 
 
   /* USER CODE END 2 */
@@ -222,36 +274,43 @@ int main(void)
 	  {
 
 		  if(flag_controle == true){
+			  HAL_GPIO_TogglePin(Led_g_GPIO_Port,Led_g_Pin);
 			  flag_controle = false;
 
-			  HAL_GPIO_TogglePin(Led_g_GPIO_Port,Led_g_Pin);
-			  //HAL_GPIO_TogglePin(Led_y_GPIO_Port,Led_y_Pin);
+			  cppM1[0] = TIM3->CNT;
+			  cppM2[0] = TIM4->CNT;
+
+			  // Começa o update
 
 			  // Checagem do sentido de rotação das rodas e calculo da velocidade
 
-			  if (TIM3->CNT >= cppM1){
+			  if (TIM3->CNT >= cppM1[1]){
 				  sentidoM1 = 1;
-				  w_rodaM1[0] = (2*M_PI*(TIM3->CNT-cppM1))/(npulsos);
+				  w_rodaM1[0] = (2*M_PI*(TIM3->CNT-cppM1[1]))/(npulsos);
 			  }
 
-			  if (TIM3->CNT < cppM1) {
+			  if (TIM3->CNT < cppM1[1]) {
 				  sentidoM1 = 0;
-				  w_rodaM1[0] = (2*M_PI*(cppM1-TIM3->CNT))/(npulsos);
+				  w_rodaM1[0] = (2*M_PI*(cppM1[1]-TIM3->CNT))/(npulsos);
 			  }
 
-			  if (TIM4->CNT >= cppM2){
+			  if (TIM4->CNT >= cppM2[1]){
 				  sentidoM2 = 1;
-				  w_rodaM2[0] = (2*M_PI*(TIM4->CNT-cppM2))/(npulsos);
+				  w_rodaM2[0] = (2*M_PI*(TIM4->CNT-cppM2[1]))/(npulsos);
 			  }
 
-			  if (TIM4->CNT < cppM2){
+			  if (TIM4->CNT < cppM2[1]){
 				  sentidoM2 = 0;
-				  w_rodaM2[0] = (2*M_PI*(cppM2-TIM4->CNT))/(npulsos);
+				  w_rodaM2[0] = (2*M_PI*(cppM2[1]-TIM4->CNT))/(npulsos);
 			  }
+
 
 			  // Filtro para o estouro do encoder
 			  if (w_rodaM1[0] > 35) w_rodaM1[0] = w_rodaM1[1];
 			  if (w_rodaM2[0] > 35) w_rodaM2[0] = w_rodaM2[1];
+
+
+			  // Fim do update
 
 			  w_rodaM1[1] = w_rodaM1[0];
 			  w_rodaM2[1] = w_rodaM2[0];
@@ -259,59 +318,67 @@ int main(void)
 			  erroM1[0] = w_targetM1 - w_rodaM1[0];
 			  erroM2[0] = w_targetM2 - w_rodaM2[0];
 
-			  acaoM1[0] = acaoM1[1] + (Kp + Kd/Tloop + Ki*Tloop)*erroM1[0] + (-Kp - 2*Kd/Tloop)*erroM1[1] + (Kd/Tloop)*erroM1[2];
-			  acaoM2[0] = acaoM2[1] + (Kp + Kd/Tloop + Ki*Tloop)*erroM1[0] + (-Kp - 2*Kd/Tloop)*erroM2[1] + (Kd/Tloop)*erroM2[2];
+			  //acaoM1[0] = acaoM1[1] + K1*(1 + Tloop/Ti1 + Td1/Tloop)*erroM1[0] - (1 - 2*Td1/Tloop)*erroM1[1] + (Td1/Tloop)*erroM1[2];
+			  //acaoM2[0] = acaoM2[1] + K2*(1 + Tloop/Ti2 + Td2/Tloop)*erroM2[0] - (1 - 2*Td2/Tloop)*erroM2[1] + (Td2/Tloop)*erroM2[2];
+			  acaoM1[0] += 1.0/(2*Tloop)*(M1A1*erroM1[0] + M1A2*erroM1[1] + M1A3*erroM1[2]);
+			  acaoM2[0] += 1.0/(2*Tloop)*(M2A1*erroM2[0] + M2A2*erroM2[1] + M2A3*erroM2[2]);
 
-			  pwmM1 = ceil(acaoM1[0]*Kpwm);
-			  pwmM2 = ceil(acaoM2[0]*Kpwm);
+			  pwmM1 = ceil(acaoM1[0]);
+			  pwmM2 = ceil(acaoM2[0]);
+
 
 			  if (pwmM1 > 3200)	pwmM1 = 3200;
+			  if (pwmM1 < 0) pwmM1 = 0;
 			  if (pwmM2 > 3200) pwmM2 = 3200;
+			  if (pwmM2 < 0) pwmM2 = 0;
 
-			  /*
 			  // Ajusta o valor do duty cycle do PWM atualizando a velocidade do robô
-			  __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, pwmM1);
-			  __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_2, pwmM2);
-			  */
+
+			  if(desl_controlador == false){
+				  __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, pwmM2);
+				  __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_2, pwmM1);
+			  }
+
 
 			  // Atualizando variáveis para o próximo loop de controle
-			  cppM1 = TIM3->CNT;
-			  cppM2 = TIM4->CNT;
+			  cppM1[1] = cppM1[0];
+			  cppM2[1] = cppM2[0];
 
 			  erroM1[2] = erroM1[1];
-			  erroM2[2] = erroM1[1];
+			  erroM2[2] = erroM2[1];
 
 			  erroM1[1] = erroM1[0];
-			  erroM2[1] = erroM1[0];
+			  erroM2[1] = erroM2[0];
 
 			  acaoM1[1] = acaoM1[0];
-			  acaoM2[1] = acaoM1[0];
-/*
-			  // Atualizando variáveis para o próximo loop de controle
-			  cppM1 = TIM3->CNT;
-			  cppM2 = TIM4->CNT;
+			  acaoM2[1] = acaoM2[0];
 
-			  velocidadesM1[cont_vel] = w_rodaM1[0];
-			  velocidadesM2[cont_vel] = w_rodaM2[0];
-			  cont_vel ++;
+			  if (w_rodaM1[0] > 0.1) start_medir_vel = true;
+
+			  if (medir_vel == true){
+				  if (start_medir_vel == true){
+					  velocidadesM1[cont_vel] = w_rodaM1[0];
+					  velocidadesM2[cont_vel] = w_rodaM2[0];
+					  cont_vel ++;
+				  }
+			  }
 
 			  HAL_GPIO_TogglePin(Led_g_GPIO_Port,Led_g_Pin);
 
-			  if (cont_vel == 150){
+			  if (cont_vel == vetor_dados){
 				  HAL_TIM_Base_Stop_IT(&htim2);
 				  HAL_GPIO_WritePin(M2A_GPIO_Port, M2A_Pin, RESET);
 				  HAL_GPIO_WritePin(M2B_GPIO_Port, M2B_Pin, RESET);
 				  HAL_GPIO_WritePin(M1A_GPIO_Port, M1A_Pin, RESET);
 				  HAL_GPIO_WritePin(M1B_GPIO_Port, M1B_Pin, RESET);
-				  //__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, 0000);
-				  //__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_2, 0000);
+
 
 				  uint8_t motor1[] = {'M','O','T','O','R','_','1',' ','\n','\n'};
-				  uint8_t motor2[] = {'M','O','T','O','R','_','2',' ','\n','\n'};
+				  uint8_t motor2[] = {'\n','M','O','T','O','R','_','2',' ','\n','\n'};
 
 				  HAL_UART_Transmit_IT(&huart2, motor1, 10);
 
-				  for(int j=0;j<150;j++){
+				  for(int j=0;j < vetor_dados;j++){
 					  int aux = 0;
 					  int aux1 = 0;
 					  aux1 = floor(velocidadesM1[j]*100);
@@ -335,9 +402,9 @@ int main(void)
 
 				  HAL_Delay(1000);
 
-				  HAL_UART_Transmit_IT(&huart2, motor2, 10);
+				  HAL_UART_Transmit_IT(&huart2, motor2, 11);
 
-				  for(int j=0;j<150;j++){
+				  for(int j=0;j< vetor_dados;j++){
 					  int aux = 0;
 					  int aux1 = 0;
 					  aux1 = floor(velocidadesM2[j]*100);
@@ -358,7 +425,7 @@ int main(void)
 					  buffer_vel[5] = '\n';
 					  HAL_UART_Transmit_IT(&huart2, buffer_vel, 6);
 					  }
-			  }*/
+			  }
 	  }
 
 	  /*
@@ -674,20 +741,25 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){ // Função chaamada qu
 	// Interpreta a msg e converte em velocidade
 	speedM2 = 1000*(rx_buffer[6]-'0') + 100*(rx_buffer[7]-'0') + 10*(rx_buffer[8]-'0') + (rx_buffer[9]-'0');
 
-	w_targetM1 = speedM1/100;
-	w_targetM2 = speedM2/100;
 
 
-	if (speedM1 > 3200){
-		speedM1 = 3200;
+	if (speedM1 > 3000){
+		speedM1 = 3000;
 	}
-	if(speedM2 > 3200){
-		speedM2 = 3200;
+	if(speedM2 > 3000){
+		speedM2 = 3000;
 	}
 
-		// Ajusta o valor do duty cycle do PWM atualizando a velocidade do robô
-	__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, speedM1);
-	__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_2, speedM2);
+	// Define novo alvo para a velocidade
+
+	w_targetM1 = speedM1/100.0;
+	w_targetM2 = speedM2/100.0;
+
+
+	// Ajusta o valor do duty cycle do PWM atualizando a velocidade do robô
+	//__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, speedM1);
+	//__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_2, speedM2);
+
 
 
 	//####################################################
@@ -763,10 +835,11 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart){
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 
 	cont_controle++;
-	if (cont_controle == 200){
+	if (cont_controle == cont_loop){
+		HAL_GPIO_TogglePin(Led_y_GPIO_Port,Led_y_Pin);
 		cont_controle = 0;
 		flag_controle = true;
-		HAL_GPIO_TogglePin(Led_y_GPIO_Port,Led_y_Pin);
+
 	}
 }
 
